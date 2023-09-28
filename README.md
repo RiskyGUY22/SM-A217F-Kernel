@@ -1,1 +1,0 @@
-# SM-A217F-Kernel
