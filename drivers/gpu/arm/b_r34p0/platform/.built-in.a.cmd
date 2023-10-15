@@ -1,0 +1,1 @@
+cmd_drivers/gpu/arm/b_r34p0/platform/built-in.a :=  rm -f drivers/gpu/arm/b_r34p0/platform/built-in.a; ./toolchain/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-ar rcSTPD drivers/gpu/arm/b_r34p0/platform/built-in.a drivers/gpu/arm/b_r34p0/platform/exynos/built-in.a

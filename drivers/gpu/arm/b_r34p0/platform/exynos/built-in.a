@@ -1,0 +1,26 @@
+!<thin>
+//                                              248       `
+gpu_integration_callbacks.o/
+mali_kbase_platform.o/
+gpu_notifier.o/
+gpu_control.o/
+gpu_pmqos.o/
+gpu_utilization.o/
+gpu_dvfs_handler.o/
+gpu_dvfs_api.o/
+gpu_dvfs_governor.o/
+gpu_job_fence_debug.o/
+mali_kbase_clk_rate_trace.o/
+gpu_custom_interface.o/
+/0              0           0     0     644     284912    `
+/29             0           0     0     644     293040    `
+/52             0           0     0     644     262904    `
+/68             0           0     0     644     244496    `
+/83             0           0     0     644     224176    `
+/96             0           0     0     644     221848    `
+/115            0           0     0     644     218544    `
+/135            0           0     0     644     267776    `
+/151            0           0     0     644     233424    `
+/172            0           0     0     644     1176      `
+/195            0           0     0     644     213688    `
+/224            0           0     0     644     356568    `
