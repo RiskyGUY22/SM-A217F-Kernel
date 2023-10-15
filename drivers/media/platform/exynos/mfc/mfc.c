@@ -454,7 +454,7 @@ static int mfc_open(struct file *file)
 		goto err_no_device;
 	}
 
-	mfc_info_dev("mfc driver open called\n");
+	mfc_debug_dev(2, "mfc driver open called\n");
 
 	if (mutex_lock_interruptible(&dev->mfc_mutex))
 		return -ERESTARTSYS;
@@ -938,11 +938,9 @@ int mfc_sysmmu_fault_handler(struct iommu_domain *iodmn, struct device *device,
 
 	/* If sysmmu is used with other IPs, it should be checked whether it's an MFC fault */
 	if (dev->pdata->share_sysmmu) {
-		if (!dev->pdata->sysmmu_passes_axid)
-			id = MFC_MMU0_READL(trans_info);
-		if ((id & dev->pdata->axid_mask) != dev->pdata->mfc_fault_num) {
-			mfc_err_dev("This is not a MFC page fault:(id = 0x%x from %s)\n",
-					id, dev->pdata->sysmmu_passes_axid ? "iommu" : "SFR read");
+		if ((MFC_MMU0_READL(trans_info) & dev->pdata->axid_mask)
+				!= dev->pdata->mfc_fault_num) {
+			mfc_err_dev("This is not a MFC page fault\n");
 			return 0;
 		}
 	}
@@ -1013,7 +1011,6 @@ static int __mfc_parse_dt(struct device_node *np, struct mfc_dev *mfc)
 	of_property_read_u32(np, "axid_mask", &pdata->axid_mask);
 	of_property_read_u32(np, "mfc_fault_num", &pdata->mfc_fault_num);
 	of_property_read_u32(np, "trans_info_offset", &pdata->trans_info_offset);
-	of_property_read_u32(np, "sysmmu_passes_axid", &pdata->sysmmu_passes_axid);
 
 	/* LLC(Last Level Cache) */
 	of_property_read_u32(np, "llc", &mfc->has_llc);

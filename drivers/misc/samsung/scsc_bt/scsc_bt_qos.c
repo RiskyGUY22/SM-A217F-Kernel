@@ -34,18 +34,8 @@
 
 #ifdef CONFIG_SCSC_QOS
 
-#define SCSC_BT_QOS_MED_LEVEL 10
 #define SCSC_BT_QOS_HIGH_LEVEL 20
-
-static uint32_t scsc_bt_qos_medium_level = SCSC_BT_QOS_MED_LEVEL;
-static uint32_t scsc_bt_qos_high_level = SCSC_BT_QOS_HIGH_LEVEL;
-
-module_param(scsc_bt_qos_medium_level, int, S_IRUGO | S_IWUSR);
-MODULE_PARM_DESC(scsc_bt_qos_medium_level,
-		 "Number of outstanding packets which triggers QoS medium level");
-module_param(scsc_bt_qos_high_level, int, S_IRUGO | S_IWUSR);
-MODULE_PARM_DESC(scsc_bt_qos_high_level,
-		 "Number of outstanding packets which triggers QoS high level");
+#define SCSC_BT_QOS_MED_LEVEL 10
 
 static struct scsc_qos_service qos_service;
 
@@ -59,9 +49,9 @@ static void scsc_bt_qos_work(struct work_struct *data)
 		u32 level = max(qos_service.number_of_outstanding_acl_packets,
 				qos_service.number_of_outstanding_hci_events);
 
-		if (level > scsc_bt_qos_high_level)
+		if (level > SCSC_BT_QOS_HIGH_LEVEL)
 			state = SCSC_QOS_MAX;
-		else if (level > scsc_bt_qos_medium_level)
+		else if (level > SCSC_BT_QOS_MED_LEVEL)
 			state = SCSC_QOS_MED;
 
 		SCSC_TAG_DEBUG(BT_COMMON, "Bluetooth QoS update (Level: %u)\n", level);
@@ -84,13 +74,13 @@ void scsc_bt_qos_update(uint32_t number_of_outstanding_hci_events,
 				     number_of_outstanding_hci_events);
 
 		/* Calculate current and next PM state */
-		if (current_level > scsc_bt_qos_high_level)
+		if (current_level > SCSC_BT_QOS_HIGH_LEVEL)
 			current_state = 2;
-		else if (current_level > scsc_bt_qos_medium_level)
+		else if (current_level > SCSC_BT_QOS_MED_LEVEL)
 			current_state = 1;
-		if (next_level > scsc_bt_qos_high_level)
+		if (next_level > SCSC_BT_QOS_HIGH_LEVEL)
 			next_state = 2;
-		else if (next_level > scsc_bt_qos_medium_level)
+		else if (next_level > SCSC_BT_QOS_MED_LEVEL)
 			next_state = 1;
 
 		/* Save current levels */

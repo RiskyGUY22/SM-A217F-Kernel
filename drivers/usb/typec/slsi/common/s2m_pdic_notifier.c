@@ -1,8 +1,7 @@
 #include <linux/device.h>
-#include <linux/module.h>
+
 #include <linux/notifier.h>
 #include <linux/usb/typec/slsi/common/s2m_pdic_notifier.h>
-#define DRIVER_DESC   "S2M PDIC Notifier driver"
 
 #define SET_PDIC_NOTIFIER_BLOCK(nb, fn, dev) do {	\
 		(nb)->notifier_call = (fn);		\
@@ -115,7 +114,6 @@ void s2m_pdic_notifier_attach_attached_dev(muic_attached_dev_t new_dev)
 	/* pdic's attached_device attach broadcast */
 	s2m_pdic_notifier_notify();
 }
-EXPORT_SYMBOL(s2m_pdic_notifier_attach_attached_dev);
 
 void s2m_pdic_notifier_detach_attached_dev(muic_attached_dev_t cur_dev)
 {
@@ -134,7 +132,6 @@ void s2m_pdic_notifier_detach_attached_dev(muic_attached_dev_t cur_dev)
 
 	s2m_pdic_notifier.attached_dev = ATTACHED_DEV_NONE_MUIC;
 }
-EXPORT_SYMBOL(s2m_pdic_notifier_detach_attached_dev);
 
 void s2m_pdic_notifier_logically_attach_attached_dev(muic_attached_dev_t new_dev)
 {
@@ -172,16 +169,5 @@ static int __init s2m_pdic_notifier_init(void)
 
 	return ret;
 }
-
-static void __exit s2m_pdic_notifier_exit(void)
-{
-	pr_info("%s: exit\n", __func__);
-}
-
 subsys_initcall(s2m_pdic_notifier_init);
-module_exit(s2m_pdic_notifier_exit);
 
-MODULE_AUTHOR("Samsung USB Team");
-MODULE_DESCRIPTION("Pdic Notifier");
-MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION(DRIVER_DESC);

@@ -4,7 +4,7 @@
 
 menu "KUnit support"
 
-config SEC_KUNIT
+config KUNIT
 	bool "Enable support for unit tests (KUnit)"
 	select HAS_IOMEM
 	help
@@ -13,39 +13,39 @@ config SEC_KUNIT
 	  able to be run locally on a developer's workstation without a VM or
 	  special hardware. For more information, please see Documentation/test/
 
-if SEC_KUNIT
+if KUNIT
 
-config SEC_KUNIT_TEST
+config KUNIT_TEST
 	bool "KUnit test for KUnit"
-	depends on SEC_KUNIT
+	depends on KUNIT
 	help
 	  Enables KUnit test to test KUnit.
 
-config SEC_KUNIT_DEATH_TEST
+config KUNIT_DEATH_TEST
 	bool "(Expert) KUnit death test for KUnit"
-	depends on SEC_KUNIT
+	depends on KUNIT
 	help
 	  Enables KUnit test to test KUnit death test feature. This test is not
 	  hermetic and can cause other tests to misbehave.
 
-config SEC_KUNIT_EXAMPLE_TEST
+config KUNIT_EXAMPLE_TEST
 	bool "Example test for KUnit"
-	depends on SEC_KUNIT
+	depends on KUNIT
 	help
 	  Enables example KUnit test to demo features of KUnit.
 
 config PLATFORM_MOCK
 	bool "KUnit Platform Mocking"
-	depends on SEC_KUNIT
+	depends on KUNIT
 	help
 	  Enables example KUnit test to demo features of KUnit.
 
-config SEC_KUNIT_MANAGER
+config KUNIT_MANAGER
 	bool "Manager for KUnit"
-	depends on SEC_KUNIT
+	depends on KUNIT
 	help
 	  Enables KUnit Manager.
 
-endif # SEC_KUNIT
+endif # KUNIT
 
 endmenu

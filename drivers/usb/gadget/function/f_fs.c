@@ -2958,9 +2958,6 @@ static inline struct f_fs_opts *ffs_do_functionfs_bind(struct usb_function *f,
 	func->ffs = ffs_opts->dev->ffs_data;
 	if (!ffs_opts->no_configfs)
 		ffs_dev_unlock();
-
-	pr_info("ffs_do_functionfs_bind %d\n", ret);
-
 	if (ret)
 		return ERR_PTR(ret);
 
@@ -3098,6 +3095,7 @@ static int _ffs_func_bind(struct usb_configuration *c,
 			ret = ss_len;
 			goto error;
 		}
+		func->function.ssp_descriptors = func->function.ss_descriptors;
 	} else {
 		ss_len = 0;
 	}
@@ -3503,6 +3501,7 @@ static void ffs_func_unbind(struct usb_configuration *c,
 	func->function.fs_descriptors = NULL;
 	func->function.hs_descriptors = NULL;
 	func->function.ss_descriptors = NULL;
+	func->function.ssp_descriptors = NULL;
 	func->interfaces_nums = NULL;
 
 	kfree(func->function.ssp_descriptors);
@@ -3514,7 +3513,6 @@ static void ffs_func_unbind(struct usb_configuration *c,
 static struct usb_function *ffs_alloc(struct usb_function_instance *fi)
 {
 	struct ffs_function *func;
-	struct ffs_dev *dev;
 
 	ENTER();
 
@@ -3522,8 +3520,11 @@ static struct usb_function *ffs_alloc(struct usb_function_instance *fi)
 	if (unlikely(!func))
 		return ERR_PTR(-ENOMEM);
 
-	dev = to_f_fs_opts(fi)->dev;
-	func->function.name    = dev->name;
+#ifdef CONFIG_USB_OLD_CONFIGFS
+	func->function.name    = "adb";
+#else
+	func->function.name    = "Function FS Gadget";
+#endif
 
 	func->function.bind    = ffs_func_bind;
 	func->function.unbind  = ffs_func_unbind;

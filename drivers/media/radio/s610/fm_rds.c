@@ -1152,7 +1152,7 @@ void fm_rds_parser(struct fm_rds_parser_info *pi, u16 info, u8 blk_type, u8 err_
 		if (err_cnt > 5)
 			return;
 
-			switch (pi->grp) {
+		switch (pi->grp) {
 			case RDS_GRPTYPE_0A:
 			case RDS_GRPTYPE_0B:
 				store_ps_data(pi, info, err_cnt);
@@ -1180,8 +1180,8 @@ void fm_rds_parser(struct fm_rds_parser_info *pi, u16 info, u8 blk_type, u8 err_
 
 			default:
 				break;
-			}
-			break;
+		}
+		break;
 	}
 }
 
@@ -1239,8 +1239,6 @@ void fm_rds_write_data_pi(struct s610_radio *radio,
 		} else if (pi->rds_event & RDS_EVENT_PS_MASK) {
 			pi->rds_event &= ~RDS_EVENT_PS_MASK;
 			str_len = strlen(pi->ps_candidate);
-                        if (str_len > 8)
-                            str_len = 8;
 			buf_ptr[total_size] = RDS_EVENT_PS;
 			buf_ptr[total_size+1] = str_len;
 
@@ -1254,8 +1252,6 @@ void fm_rds_write_data_pi(struct s610_radio *radio,
 		} else if (pi->rds_event & RDS_EVENT_RT_MASK) {
 			pi->rds_event &= ~RDS_EVENT_RT_MASK;
 			str_len = strlen(pi->rt_candidate);
-			if (str_len > 64)
-				str_len = 64;
 			buf_ptr[total_size] = RDS_EVENT_RT;
 			buf_ptr[total_size+1] = str_len;
 
