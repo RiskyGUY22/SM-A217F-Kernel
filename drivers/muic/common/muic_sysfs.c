@@ -30,11 +30,13 @@
 #include <linux/muic/common/muic_sysfs.h>
 #include <linux/muic/common/muic_interface.h>
 
-#if IS_ENABLED(CONFIG_BATTERY_SAMSUNG)
+#ifdef CONFIG_BATTERY_SAMSUNG
 #include <linux/sec_batt.h>
+#if defined(CONFIG_BATTERY_SAMSUNG_LEGO_STYLE)
 #include "../../battery/common/sec_charging_common.h"
 #endif
-#if IS_ENABLED(CONFIG_ARCH_QCOM) && !defined(CONFIG_USB_ARCH_EXYNOS) && !defined(CONFIG_ARCH_EXYNOS)
+#endif
+#if defined(CONFIG_ARCH_QCOM)
 #include <linux/sec_param.h>
 #else
 #include <linux/sec_ext.h>
@@ -449,7 +451,7 @@ static ssize_t muic_show_vbus_value(struct device *dev,
 	return sprintf(buf, "%d\n", val);
 }
 
-#if IS_ENABLED(CONFIG_MUIC_HV) && !IS_ENABLED(CONFIG_HV_MUIC_AFC_DISABLE_ENFORCE)
+#if IS_ENABLED(CONFIG_MUIC_HV)
 static ssize_t muic_sysfs_show_afc_disable(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -470,12 +472,11 @@ static ssize_t muic_sysfs_set_afc_disable(struct device *dev,
 	struct muic_platform_data *pdata = dev_get_drvdata(dev);
 	struct muic_interface_t *muic_if = pdata->muic_if;
 	bool curr_val = pdata->afc_disable;
+	int ret = 0;
 	int param_val = 0;
-	int ret;
-#if IS_ENABLED(CONFIG_BATTERY_SAMSUNG)
+#ifdef CONFIG_BATTERY_SAMSUNG
 	union power_supply_propval psy_val;
 #endif
-
 	if (!strncasecmp(buf, "1", 1)) {
 		pdata->afc_disable = true;
 	} else if (!strncasecmp(buf, "0", 1)) {
@@ -486,35 +487,22 @@ static ssize_t muic_sysfs_set_afc_disable(struct device *dev,
 	}
 
 	param_val = pdata->afc_disable ? '1' : '0';
-	ret = 0;
 
-#if IS_BUILTIN(CONFIG_MUIC_NOTIFIER)
-#ifdef CONFIG_SEC_PARAM
-#if IS_ENABLED(CONFIG_ARCH_QCOM) && !defined(CONFIG_USB_ARCH_EXYNOS) && !defined(CONFIG_ARCH_EXYNOS)
+#if defined(CONFIG_ARCH_QCOM)
 	ret = sec_set_param(param_index_afc_disable, &param_val);
 	if (ret == false) {
-		pr_info("%s:set_param failed - %02x:%02x(%d)\n", __func__,
-			param_val, curr_val, ret);
-		
-		pdata->afc_disable = curr_val;
-		return -EIO;
-	}
 #else
 	ret = sec_set_param(CM_OFFSET + 1, (char)param_val);
 	if (ret < 0) {
+#endif
 		pr_info("%s:set_param failed - %02x:%02x(%d)\n", __func__,
 			param_val, curr_val, ret);
 
 		pdata->afc_disable = curr_val;
 		return -EIO;
 	}
-#endif
-#else /* CONFIG_SEC_PARAM */
-	pr_err("%s:set_param is NOT supported!\n", __func__);
-#endif
-#endif
 
-#if IS_ENABLED(CONFIG_BATTERY_SAMSUNG)
+#ifdef CONFIG_BATTERY_SAMSUNG
 	psy_val.intval = param_val;
 	psy_do_property("battery", set, POWER_SUPPLY_EXT_PROP_HV_DISABLE, psy_val);
 #endif
@@ -544,7 +532,7 @@ static ssize_t muic_store_afc_set_voltage(struct device *dev,
 	return count;
 }
 #endif /* CONFIG_HV_MUIC_VOLTAGE_CTRL */
-#endif /* CONFIG_MUIC_HV  && !CONFIG_HV_MUIC_AFC_DISABLE_ENFORCE */
+#endif /* CONFIG_MUIC_HV */
 
 #if IS_ENABLED(CONFIG_HICCUP_CHARGER)
 static ssize_t hiccup_show(struct device *dev,
@@ -610,14 +598,14 @@ static DEVICE_ATTR(usb_en, 0664,
 		muic_sysfs_show_usb_en,
 		muic_sysfs_set_usb_en);
 static DEVICE_ATTR(vbus_value, 0444, muic_show_vbus_value, NULL);
-#if IS_ENABLED(CONFIG_MUIC_HV) && !IS_ENABLED(CONFIG_HV_MUIC_AFC_DISABLE_ENFORCE)
+#if IS_ENABLED(CONFIG_MUIC_HV)
 static DEVICE_ATTR(afc_disable, 0664,
 		muic_sysfs_show_afc_disable, muic_sysfs_set_afc_disable);
 #if IS_ENABLED(CONFIG_HV_MUIC_VOLTAGE_CTRL)
 static DEVICE_ATTR(afc_set_voltage, 0220,
 		NULL, muic_store_afc_set_voltage);
 #endif /* CONFIG_HV_MUIC_VOLTAGE_CTRL */
-#endif /* CONFIG_MUIC_HV && !CONFIG_HV_MUIC_AFC_DISABLE_ENFORCE */
+#endif /* CONFIG_MUIC_HV */
 #if IS_ENABLED(CONFIG_HICCUP_CHARGER)
 static DEVICE_ATTR_RW(hiccup);
 #endif /* CONFIG_HICCUP_CHARGER */
@@ -641,12 +629,12 @@ static struct attribute *muic_sysfs_attributes[] = {
 	&dev_attr_apo_factory.attr,
 	&dev_attr_usb_en.attr,
 	&dev_attr_vbus_value.attr,
-#if IS_ENABLED(CONFIG_MUIC_HV) && !IS_ENABLED(CONFIG_HV_MUIC_AFC_DISABLE_ENFORCE)
+#if IS_ENABLED(CONFIG_MUIC_HV)
 	&dev_attr_afc_disable.attr,
 #if IS_ENABLED(CONFIG_HV_MUIC_VOLTAGE_CTRL)
 	&dev_attr_afc_set_voltage.attr,
 #endif /* CONFIG_HV_MUIC_VOLTAGE_CTRL */
-#endif /* CONFIG_MUIC_HV && !CONFIG_HV_MUIC_AFC_DISABLE_ENFORCE */
+#endif /* CONFIG_MUIC_HV */
 #if IS_ENABLED(CONFIG_HICCUP_CHARGER)
 	&dev_attr_hiccup.attr,
 #endif /* CONFIG_HICCUP_CHARGER */
@@ -685,12 +673,9 @@ int muic_sysfs_init(struct muic_platform_data *muic_pdata)
 
 	return ret;
 }
-EXPORT_SYMBOL_GPL(muic_sysfs_init);
 
 void muic_sysfs_deinit(struct muic_platform_data *muic_pdata)
 {
 	if (muic_pdata->switch_device)
 		sysfs_remove_group(&muic_pdata->switch_device->kobj, &muic_sysfs_group);
 }
-EXPORT_SYMBOL_GPL(muic_sysfs_deinit);
-

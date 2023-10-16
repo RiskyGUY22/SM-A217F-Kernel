@@ -79,7 +79,6 @@ static int crypto_diskcipher_check(struct bio *bio)
 	struct crypto_diskcipher *ci = NULL;
 	struct inode *inode = NULL;
 	struct page *page = NULL;
-	struct address_space *mapping;
 
 	if (!bio) {
 		pr_err("%s: doesn't exist bio\n", __func__);
@@ -99,23 +98,13 @@ static int crypto_diskcipher_check(struct bio *bio)
 	}
 
 	page = bio->bi_io_vec[0].bv_page;
-	if (!page || PageAnon(page))
+	if (!page || PageAnon(page) || !page->mapping || !page->mapping->host || atomic_read(&ci->inode->i_dio_count))
 		return 0;
 
-        if (unlikely(PageSwapCache(page)))
-               return 0;
-
-	mapping = page_mapping(page);
-	if(!mapping)
-		return 0;
-
-	if (!mapping->host || atomic_read(&ci->inode->i_dio_count))
-		return 0;
-
-	if (!mapping->host->i_crypt_info)
+	if (!page->mapping->host->i_crypt_info)
                 return 0;
 
-	inode = mapping->host;
+	inode = page->mapping->host;
 	if (ci->inode != inode) {
 		pr_err("%s: fails to invalid inode\n", __func__);
 		return -EINVAL;

@@ -149,26 +149,18 @@ exit:
 
 static ssize_t
 exynos_usbdrd_hs_phy_tune_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t size)
+		struct device_attribute *attr, const char *buf, size_t n)
 {
+	char tune_name[30];
+	u32 tune_val;
 	struct device_node *tune_node;
 	struct exynos_usbdrd_phy *phy_drd = dev_get_drvdata(dev);
-	char *tune_name;
 	int ret, i;
-	u32 tune_val;
 	u32 tune_num = 0;
 
-	if (size > EXYNOS_DRD_TUNEPARAM_LEN) {
-		pr_err("%s size(%zu) is too long.\n", __func__, size);
+	if (sscanf(buf, "%s %x", tune_name, &tune_val) != 2){
 		return -EINVAL;
 	}
-
-	tune_name = kzalloc(size + 1, GFP_KERNEL);
-	if (!tune_name)
-		return -ENOMEM;
-
-	if (sscanf(buf, "%s %x", tune_name, &tune_val) != 2)
-		goto exit;
 
 	tune_node = of_parse_phandle(dev->of_node, "hs_tune_param", 0);
 	ret = of_property_read_u32_array(tune_node, "hs_tune_cnt", &tune_num, 1);
@@ -186,8 +178,7 @@ exynos_usbdrd_hs_phy_tune_store(struct device *dev,
 	}
 
 exit:
-	kfree(tune_name);
-	return size;
+	return n;
 }
 
 static DEVICE_ATTR(hs_phy_tune, S_IWUSR | S_IRUSR | S_IRGRP,
@@ -227,26 +218,18 @@ exit:
 
 static ssize_t
 exynos_usbdrd_phy_tune_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t size)
+		struct device_attribute *attr, const char *buf, size_t n)
 {
+	char tune_name[30];
+	u32 tune_val;
 	struct device_node *tune_node;
 	struct exynos_usbdrd_phy *phy_drd = dev_get_drvdata(dev);
-	char *tune_name;
 	int ret, i;
 	u32 tune_num = 0;
-	u32 tune_val = 0;
 
-	if (size > EXYNOS_DRD_TUNEPARAM_LEN) {
-		pr_err("%s size(%zu) is too long.\n", __func__, size);
+	if (sscanf(buf, "%s %x", tune_name, &tune_val) != 2){
 		return -EINVAL;
 	}
-
-	tune_name = kzalloc(size + 1, GFP_KERNEL);
-	if (!tune_name)
-		return -ENOMEM;
-
-	if (sscanf(buf, "%s %x", tune_name, &tune_val) != 2)
-		goto exit;
 
 	tune_node = of_parse_phandle(dev->of_node, "ss_tune_param", 0);
 	ret = of_property_read_u32_array(tune_node, "ss_tune_cnt", &tune_num, 1);
@@ -264,8 +247,7 @@ exynos_usbdrd_phy_tune_store(struct device *dev,
 	}
 
 exit:
-	kfree(tune_name);
-	return size;
+	return n;
 }
 
 static DEVICE_ATTR(phy_tune, S_IWUSR | S_IRUSR | S_IRGRP,

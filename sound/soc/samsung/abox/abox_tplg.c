@@ -49,7 +49,6 @@ struct abox_tplg_kcontrol_data {
 	unsigned int value[128];
 	int count;
 	bool is_volatile;
-	bool synchronous;
 	unsigned int addr;
 	unsigned int *kaddr;
 	struct snd_soc_component *cmpnt;
@@ -193,11 +192,6 @@ static bool abox_tplg_is_volatile(struct snd_soc_tplg_private *priv)
 	return abox_tplg_get_bool(priv, ABOX_TKN_VOLATILE);
 }
 
-static bool abox_tplg_synchronous(struct snd_soc_tplg_private *priv)
-{
-	return abox_tplg_get_bool(priv, ABOX_TKN_SYNCHRONOUS);
-}
-
 static unsigned int abox_tplg_get_address(struct snd_soc_tplg_private *priv)
 {
 	int ret = abox_tplg_get_int(priv, ABOX_TKN_ADDRESS);
@@ -205,8 +199,7 @@ static unsigned int abox_tplg_get_address(struct snd_soc_tplg_private *priv)
 	return (ret < 0 && ret > -MAX_ERRNO) ? 0 : ret;
 }
 
-static DECLARE_COMPLETION(report_control_completion);
-static DECLARE_COMPLETION(update_control_completion);
+static struct completion report_control_completion;
 
 static int abox_tplg_ipc_get(struct device *dev, int gid, int id)
 {
@@ -225,9 +218,8 @@ static int abox_tplg_ipc_get(struct device *dev, int gid, int id)
 	if (ret < 0)
 		return ret;
 
-	reinit_completion(&report_control_completion);
 	timeout = wait_for_completion_timeout(&report_control_completion,
-			abox_get_waiting_jiffies(true));
+			msecs_to_jiffies(1000));
 	if (timeout <= 0)
 		return -ETIME;
 
@@ -257,15 +249,13 @@ static int abox_tplg_ipc_get_complete(int gid, int id, unsigned int *value)
 }
 
 static int abox_tplg_ipc_put(struct device *dev, int gid, int id,
-		unsigned int *value, int count, bool sync)
+		unsigned int *value, int count)
 {
 	ABOX_IPC_MSG msg;
 	struct IPC_SYSTEM_MSG *system_msg = &msg.msg.system;
-	unsigned long timeout;
-	int i, ret;
+	int i;
 
-	dev_dbg(dev, "%s(%#x, %d, %u, %d, %d)\n", __func__, gid, id,
-			value[0], count, sync);
+	dev_dbg(dev, "%s(%#x, %d, %u)\n", __func__, gid, id, value[0]);
 
 	msg.ipcid = IPC_SYSTEM;
 	system_msg->msgtype = ABOX_UPDATE_COMPONENT_CONTROL;
@@ -274,40 +264,7 @@ static int abox_tplg_ipc_put(struct device *dev, int gid, int id,
 	for (i = 0; i < count; i++)
 		system_msg->bundle.param_s32[i] = value[i];
 
-	ret = abox_tplg_request_ipc(&msg);
-
-	if (sync) {
-		reinit_completion(&update_control_completion);
-		timeout = wait_for_completion_timeout(
-				&update_control_completion,
-				abox_get_waiting_jiffies(true));
-		if (timeout <= 0)
-			return -ETIME;
-	}
-
-	return ret;
-}
-
-static int abox_tplg_ipc_put_complete(int gid, int id, unsigned int *value)
-{
-	struct abox_tplg_kcontrol_data *kdata;
-	int i;
-
-	list_for_each_entry(kdata, &kcontrol_list, list) {
-		if (kdata->gid == gid && kdata->id == id) {
-			struct device *dev = kdata->cmpnt->dev;
-
-			for (i = 0; i < kdata->count; i++) {
-				dev_dbg(dev, "%s: %#x, %#x, %d\n", __func__,
-						gid, id, value[i]);
-				kdata->value[i] = value[i];
-			}
-			complete(&update_control_completion);
-			return 0;
-		}
-	}
-
-	return -EINVAL;
+	return abox_tplg_request_ipc(&msg);
 }
 
 static int abox_tplg_val_get(struct device *dev,
@@ -342,8 +299,7 @@ static int abox_tplg_val_put(struct device *dev,
 {
 	ABOX_IPC_MSG msg;
 	struct IPC_SYSTEM_MSG *system_msg = &msg.msg.system;
-	unsigned long timeout;
-	int i, ret;
+	int i;
 
 	dev_dbg(dev, "%s(%#x, %d, %u)\n", __func__, kdata->gid, kdata->id,
 			kdata->value[0]);
@@ -357,17 +313,7 @@ static int abox_tplg_val_put(struct device *dev,
 	for (i = 0; i < kdata->count; i++)
 		system_msg->bundle.param_s32[i] = kdata->value[i];
 
-	ret = abox_tplg_request_ipc(&msg);
-
-	if (kdata->synchronous) {
-		timeout = wait_for_completion_timeout(
-				&update_control_completion,
-				abox_get_waiting_jiffies(true));
-		if (timeout <= 0)
-			return -ETIME;
-	}
-
-	return ret;
+	return abox_tplg_request_ipc(&msg);
 }
 
 static inline int abox_tplg_kcontrol_get(struct device *dev,
@@ -386,7 +332,7 @@ static inline int abox_tplg_kcontrol_put(struct device *dev,
 		return abox_tplg_val_put(dev, kdata);
 	else
 		return abox_tplg_ipc_put(dev, kdata->gid, kdata->id,
-				kdata->value, kdata->count, kdata->synchronous);
+				kdata->value, kdata->count);
 }
 
 static inline int abox_tplg_kcontrol_restore(struct device *dev,
@@ -398,7 +344,7 @@ static inline int abox_tplg_kcontrol_restore(struct device *dev,
 		abox_tplg_val_set(dev, kdata);
 	else
 		ret = abox_tplg_ipc_put(dev, kdata->gid, kdata->id,
-				kdata->value, kdata->count, kdata->synchronous);
+				kdata->value, kdata->count);
 
 	return ret;
 }
@@ -412,8 +358,7 @@ static inline int abox_tplg_widget_get(struct device *dev,
 static inline int abox_tplg_widget_put(struct device *dev,
 		struct abox_tplg_widget_data *wdata)
 {
-	return abox_tplg_ipc_put(dev, wdata->gid, wdata->id, &wdata->value, 1,
-			false);
+	return abox_tplg_ipc_put(dev, wdata->gid, wdata->id, &wdata->value, 1);
 }
 
 static int abox_tplg_mixer_event(struct snd_soc_dapm_widget *w,
@@ -929,7 +874,6 @@ static int abox_tplg_control_load_enum(struct snd_soc_component *cmpnt,
 	kdata->id = id;
 	kdata->count = abox_tplg_get_count(&tplg_ec->priv);
 	kdata->is_volatile = abox_tplg_is_volatile(&tplg_ec->priv);
-	kdata->synchronous = abox_tplg_synchronous(&tplg_ec->priv);
 	kdata->cmpnt = cmpnt;
 	kdata->kcontrol_new = kctl;
 	kdata->tplg_ec = tplg_ec;
@@ -976,7 +920,6 @@ static int abox_tplg_control_load_mixer(struct snd_soc_component *cmpnt,
 	kdata->id = id;
 	kdata->count = abox_tplg_get_count(&tplg_mc->priv);
 	kdata->is_volatile = abox_tplg_is_volatile(&tplg_mc->priv);
-	kdata->synchronous = abox_tplg_synchronous(&tplg_mc->priv);
 	kdata->addr = abox_tplg_get_address(&tplg_mc->priv);
 	if (kdata->addr)
 		kdata->kaddr = abox_addr_to_kernel_addr(data, kdata->addr);
@@ -1293,19 +1236,15 @@ static irqreturn_t abox_tplg_ipc_handler(int ipc_id, void *dev_id,
 		ABOX_IPC_MSG *msg)
 {
 	struct IPC_SYSTEM_MSG *system = &msg->msg.system;
-	irqreturn_t ret = IRQ_HANDLED;
+	irqreturn_t ret = IRQ_NONE;
 
 	switch (system->msgtype) {
 	case ABOX_REPORT_COMPONENT_CONTROL:
 		if (abox_tplg_ipc_get_complete(system->param1, system->param2,
 				(unsigned int *)system->bundle.param_s32) >= 0)
-		break;
-	case ABOX_UPDATED_COMPONENT_CONTROL:
-		if (abox_tplg_ipc_put_complete(system->param1, system->param2,
-				(unsigned int *)system->bundle.param_s32) >= 0)
+			ret = IRQ_HANDLED;
 		break;
 	default:
-		ret = IRQ_NONE;
 		break;
 	}
 
@@ -1357,6 +1296,8 @@ int abox_tplg_probe(struct snd_soc_component *cmpnt)
 	int i, ret;
 
 	dev_dbg(dev, "%s\n", __func__);
+
+	init_completion(&report_control_completion);
 
 	if (abox_tplg_fw) {
 		release_firmware(abox_tplg_fw);

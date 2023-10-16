@@ -18,14 +18,13 @@ config EXYNOS_SCI
 
 config EXYNOS_BCM_DBG
 	bool "EXYNOS_BCM_DBG driver support"
-	depends on !DEBUG_SNAPSHOT_MINIMIZED_MODE
 	default y
 	help
 	  Enable exynos-bcm_dbg driver support
 
 config EXYNOS_BCM_DBG_GNR
 	bool "EXYNOS_BCM_DBG_GNR driver support"
-	depends on !EXYNOS_ADV_TRACER && !DEBUG_SNAPSHOT_MINIMIZED_MODE
+	depends on !EXYNOS_ADV_TRACER
 	default y
 	help
 	  Enable exynos-bcm_dbg general interface support.
@@ -283,6 +282,10 @@ config EXYNOS_DEBUG_FREQ
 	help
 	  If this config is set, check constraint freq every time which cpufreq,
 	  devfreq are changed. In case of that, print error message
+
+config STATE_NOTIFIER
+	bool "State Notifier"
+	default n
 
 source "drivers/soc/samsung/exynos_cpu_perf/Kconfig"
 endif

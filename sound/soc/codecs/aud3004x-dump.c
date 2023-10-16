@@ -36,7 +36,6 @@
 char g_codec_command[MAX_STRING_LENGTH] = "dump";
 char reg_dump[1000];
 unsigned int g_command, g_arg1, g_arg2, g_arg3;
-struct mutex reg_dump_read_lock;
 
 /*
  * global variables for
@@ -354,7 +353,6 @@ static ssize_t codec_speedy_read(struct file *f,
 
 	pr_info("sysfs driver: read()\n");
 
-	mutex_lock(&reg_dump_read_lock);
 	memset(reg_dump, 0, sizeof(reg_dump));
 	if (g_command == COMMAND_DUMP) {
 
@@ -386,7 +384,6 @@ static ssize_t codec_speedy_read(struct file *f,
 		codec_read_reg(g_arg1, g_arg2, (u8 *)&value);
 		g_arg3 = (unsigned int)value & 0x00ff;
 	}
-	mutex_unlock(&reg_dump_read_lock);
 
 	return 0;
 }
@@ -452,8 +449,6 @@ static CLASS_ATTR_RW(codec_sysfs);
 static int __init codec_speedy_init(void) /* Constructor */
 {
 	int ret = 0;
-
-	mutex_init(&reg_dump_read_lock);
 
 	pr_info("codec_speedy: registered");
 	if (alloc_chrdev_region(&codec_speedy_dev_t, 0, 1, "acpm") < 0)

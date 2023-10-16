@@ -1230,6 +1230,7 @@ static int dw_mci_edmac_start_dma(struct dw_mci *host, unsigned int sg_len)
 	int ret = 0;
 
 	/* Set external dma config: burst size, burst width */
+	memset(&cfg, 0, sizeof(cfg));
 	cfg.dst_addr = host->phy_regs + fifo_offset;
 	cfg.src_addr = cfg.dst_addr;
 	cfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
@@ -2813,8 +2814,8 @@ static void dw_mci_tasklet_func(unsigned long priv)
 				}
 
 				dw_mci_fifo_reset(host->dev, host);
-				dw_mci_stop_dma(host);
 				send_stop_abort(host, data);
+				dw_mci_stop_dma(host);
 				state = STATE_SENDING_STOP;
 				dw_mci_debug_req_log(host, host->mrq, STATE_REQ_CMD_PROCESS, state);
 				break;
@@ -2842,9 +2843,9 @@ static void dw_mci_tasklet_func(unsigned long priv)
 			 */
 			if (test_and_clear_bit(EVENT_DATA_ERROR, &host->pending_events)) {
 				dw_mci_fifo_reset(host->dev, host);
-				dw_mci_stop_dma(host);
 				if (!(host->data_status & (SDMMC_INT_DRTO | SDMMC_INT_EBE)))
 					send_stop_abort(host, data);
+				dw_mci_stop_dma(host);
 				state = STATE_DATA_ERROR;
 				dw_mci_debug_req_log(host,
 						     host->mrq, STATE_REQ_DATA_PROCESS, state);
@@ -2879,9 +2880,9 @@ static void dw_mci_tasklet_func(unsigned long priv)
 			 */
 			if (test_and_clear_bit(EVENT_DATA_ERROR, &host->pending_events)) {
 				dw_mci_fifo_reset(host->dev, host);
-				dw_mci_stop_dma(host);
 				if (!(host->data_status & (SDMMC_INT_DRTO | SDMMC_INT_EBE)))
 					send_stop_abort(host, data);
+				dw_mci_stop_dma(host);
 				state = STATE_DATA_ERROR;
 				dw_mci_debug_req_log(host, host->mrq,
 						     STATE_REQ_DATA_PROCESS, state);
@@ -3730,9 +3731,7 @@ static irqreturn_t dw_mci_detect_interrupt(int irq, void *dev_id)
 	struct mmc_host *mmc = host->slot->mmc;
 
 	/* sdcard power off */
-	if (host->quirks & DW_MCI_QUIRK_CD_PWR_OFF)
-		queue_work(host->sd_card_det_workqueue, &host->card_det_work);
-
+	queue_work(host->sd_card_det_workqueue, &host->card_det_work);
 	if (host->card_detect_cnt < 0x7FFFFFF0)
 		host->card_detect_cnt++;
 
@@ -4524,8 +4523,7 @@ static struct dw_mci_of_quirks {
 	.quirk = "disable-wp",.id = DW_MCI_QUIRK_NO_WRITE_PROTECT,}, {
 	.quirk = "fixed_voltage",.id = DW_MMC_QUIRK_FIXED_VOLTAGE,}, {
 	.quirk = "card-init-hwacg-ctrl",.id = DW_MCI_QUIRK_HWACG_CTRL,}, {
-	.quirk = "enable-ulp-mode",.id = DW_MCI_QUIRK_ENABLE_ULP,}, {
-	.quirk = "card-detect-pwr-off",.id = DW_MCI_QUIRK_CD_PWR_OFF,},};
+.quirk = "enable-ulp-mode",.id = DW_MCI_QUIRK_ENABLE_ULP,},};
 
 static struct dw_mci_board *dw_mci_parse_dt(struct dw_mci *host)
 {
@@ -4888,15 +4886,13 @@ int dw_mci_probe(struct dw_mci *host, struct platform_device *pdev)
 	}
 	INIT_WORK(&host->card_work, dw_mci_work_routine_card);
 
-	if (host->quirks & DW_MCI_QUIRK_CD_PWR_OFF) {
-		/* For SD card power control */
-		host->sd_card_det_workqueue = alloc_workqueue("sd-card-det-wq", WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_HIGHPRI, 1);
-		if (!host->sd_card_det_workqueue) {
-			ret = -ENOMEM;
-			goto err_dmaunmap;
-		}
-		INIT_WORK(&host->card_det_work, dw_mci_sd_power_off);
+	/* For SD card power control */
+	host->sd_card_det_workqueue = alloc_workqueue("sd-card-det-wq", WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_HIGHPRI, 1);
+	if (!host->sd_card_det_workqueue) {
+		ret = -ENOMEM;
+		goto err_dmaunmap;
 	}
+	INIT_WORK(&host->card_det_work, dw_mci_sd_power_off);
 
 	/* INT min lock */
 	pm_workqueue = create_freezable_workqueue("dw_mci_clk_ctrl");
@@ -4971,10 +4967,9 @@ int dw_mci_probe(struct dw_mci *host, struct platform_device *pdev)
 
 err_workqueue:
 	destroy_workqueue(host->card_workqueue);
+	destroy_workqueue(host->sd_card_det_workqueue);
 	destroy_workqueue(pm_workqueue);
 	pm_qos_remove_request(&host->pm_qos_lock);
-	if (host->quirks & DW_MCI_QUIRK_CD_PWR_OFF)
-		destroy_workqueue(host->sd_card_det_workqueue);
 
 err_dmaunmap:
 	if (host->use_dma && host->dma_ops->exit)
@@ -5021,11 +5016,9 @@ void dw_mci_remove(struct dw_mci *host)
 
 	del_timer_sync(&host->sto_timer);
 	destroy_workqueue(host->card_workqueue);
+	destroy_workqueue(host->sd_card_det_workqueue);
 	destroy_workqueue(pm_workqueue);
 	pm_qos_remove_request(&host->pm_qos_lock);
-
-	if (host->quirks & DW_MCI_QUIRK_CD_PWR_OFF)
-		destroy_workqueue(host->sd_card_det_workqueue);
 
 	if (host->pdata->quirks & DW_MCI_QUIRK_USE_SSC) {
 		if (drv_data && drv_data->ssclk_control)

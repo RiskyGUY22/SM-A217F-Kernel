@@ -304,9 +304,7 @@ struct mem_link_device {
 	 */
 	struct delayed_work bootdump_rx_dwork;
 	struct std_dload_info img_info;	/* Information of each binary image */
-	atomic_t init_end_cnt;
-	atomic_t init_end_busy;
-	int last_init_end_cnt;
+	atomic_t cp_boot_done;
 
 	/**
 	 * Mandatory methods for the common memory-type interface framework

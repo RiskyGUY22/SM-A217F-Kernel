@@ -25,9 +25,7 @@
 #define __MUIC_NOTIFIER_H__
 
 #include <linux/muic/common/muic.h>
-#include <linux/muic/common/muic_param.h>
-
-#if IS_ENABLED(CONFIG_PDIC_NOTIFIER)
+#if defined(CONFIG_PDIC_NOTIFIER)
 #include <linux/usb/typec/common/pdic_notifier.h>
 #endif
 
@@ -54,7 +52,7 @@ typedef enum {
 	MUIC_NOTIFY_DEV_PDIC,
 	MUIC_NOTIFY_DEV_CPUIDLE,
 	MUIC_NOTIFY_DEV_CPUFREQ,
-#if IS_ENABLED(CONFIG_USB_TYPEC_MANAGER_NOTIFIER)
+#ifdef CONFIG_USB_TYPEC_MANAGER_NOTIFIER
 	MUIC_NOTIFY_DEV_MANAGER,
 #endif
 	MUIC_NOTIFY_DEV_CABLE_DATA,
@@ -63,7 +61,7 @@ typedef enum {
 struct muic_notifier_struct {
 	muic_attached_dev_t attached_dev;
 	muic_notifier_cmd_t cmd;
-#if IS_ENABLED(CONFIG_PDIC_NOTIFIER)
+#if defined(CONFIG_PDIC_NOTIFIER)
 	PD_NOTI_ATTACH_TYPEDEF cxt;
 #endif
 	struct blocking_notifier_head notifier_call_chain;
@@ -84,7 +82,7 @@ extern void muic_notifier_logically_attach_attached_dev(muic_attached_dev_t new_
 extern void muic_notifier_logically_detach_attached_dev(muic_attached_dev_t cur_dev);
 extern void muic_notifier_chg_off(muic_attached_dev_t new_dev);
 
-#if IS_ENABLED(CONFIG_PDIC_SLSI_NON_MCU)
+#ifdef CONFIG_PDIC_SLSI_NON_MCU
 extern int muic_pdic_notifier_register(struct notifier_block *nb,
 		notifier_fn_t notifier, muic_notifier_device_t listener);
 extern int muic_pdic_notifier_unregister(struct notifier_block *nb);
